@@ -637,6 +637,14 @@ async function exportCSV(auto){
       if (e&&e.code==="rate_limited"){ toast("Bitte kurz warten und erneut sichern."); return; }
     }
   }
+  // outside claude.ai (e.g. GitHub Pages): a normal browser download works
+  if (!window.claude){
+    try{
+      const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      const a=h("a",{href:url,download:exportFilename()}); document.body.append(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),10000); exportDone(); return;
+    }catch(e){}
+  }
   // fallback: copyable text
   const ta=h("textarea",{class:"in",id:"csvFallback",readonly:true,style:"min-height:160px;font-size:12px"}); ta.value=csv;
   modal({title:"CSV sichern",body:h("div",{class:"stack"},h("p",{class:"muted",text:"Der Download ist hier nicht verfügbar. Kopiere den Text und speichere ihn als .csv-Datei, zum Beispiel in der Dateien-App."}),ta),
