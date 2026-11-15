@@ -740,7 +740,7 @@ async function exportCSV(auto){
     }catch(e){}
   }
   // fallback: copyable text
-  const ta=h("textarea",{class:"in",id:"csvFallback",readonly:true,style:"min-height:160px;font-size:12px"}); ta.value=csv;
+  const ta=h("textarea",{class:"in",id:"csvFallback",readonly:true,style:"min-height:160px"}); ta.value=csv;
   modal({title:"CSV sichern",body:h("div",{class:"stack"},h("p",{class:"muted",text:"Der Download ist hier nicht verfügbar. Kopiere den Text und speichere ihn als .csv-Datei, zum Beispiel in der Dateien-App."}),ta),
     actions:[{label:"Schließen"},{label:"Kopieren & als gesichert markieren",kind:"primary",onClick:async()=>{ try{ await navigator.clipboard.writeText(csv); exportDone(); }catch(err){ ta.select(); toast("Text markiert – jetzt kopieren."); return false; } }}]});
 }
