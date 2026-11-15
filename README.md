@@ -18,4 +18,6 @@ Die CSV nutzt das Spaltenformat von Gym Hero. Routinen stehen zusätzlich als Ze
 
 ## Nutzung
 
-`index.html` im Browser öffnen, z. B. über GitHub Pages.
+Die App läuft über GitHub Pages: https://reiselog-app.github.io/Trainingstagebuch/
+
+Auf dem iPhone in Safari öffnen → Teilen → „Zum Home-Bildschirm“. Dann startet sie im Vollbild und funktioniert auch ohne Netz.

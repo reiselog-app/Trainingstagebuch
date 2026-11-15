@@ -2,8 +2,15 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trainingslog</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b5bd1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Training">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Trainingstagebuch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -52,7 +59,7 @@ h2{font-size:22px;line-height:1.15}
 h3{font-size:19px;line-height:1.2}
 .num{font-variant-numeric:tabular-nums}
 .app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
-header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
 header.top h1{flex:1}
 main{flex:1;padding:16px 16px 96px;display:flex;flex-direction:column;gap:16px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
@@ -295,7 +302,7 @@ function render(){
 /* ---------- HOME ---------- */
 function vHome(main){
   $("#title").textContent="Training";
-  main.append(backupCard());
+  { const bc=backupCard(); if(bc) main.append(bc); }
   if (S.active){
     const a=S.active; const n=a.items.reduce((k,i)=>k+loggedSets(i).length,0);
     main.append(h("div",{class:"card",style:"border-color:var(--accent)"},
@@ -444,7 +451,7 @@ async function finishWorkout(){
   await saveWorkout(w);
   S.active=null; await saveActiveNow(); clearInterval(tick);
   summaryId=w.id; summaryBack="home"; go("summary");
-  setTimeout(()=>exportCSV(true),300);
+  exportCSV(true);
 }
 
 /* ---------- SUMMARY (nach Finish und im Verlauf) ---------- */
@@ -454,6 +461,7 @@ function vSummary(main){
   const w=S.workouts.find(x=>x.id===summaryId); if(!w){ view=summaryBack; return render(); }
   $("#title").textContent=w.routine;
   backBtn(()=>go(summaryBack));
+  { const bc=backupCard(); if(bc) main.append(bc); }
   const sets=w.items.reduce((n,i)=>n+i.sets.length,0), reps=w.items.reduce((n,i)=>n+i.sets.reduce((k,s)=>k+(s.r||0),0),0);
   const vol=w.items.reduce((n,i)=>n+i.sets.reduce((k,s)=>k+(s.r||0)*(s.w||0),0),0);
   const groups=[...new Set(w.items.map(i=>grp(i.group)))];
@@ -731,8 +739,14 @@ async function exportCSV(auto){
       if (e&&e.code==="rate_limited"){ toast("Bitte kurz warten und erneut sichern."); return; }
     }
   }
-  // outside claude.ai (e.g. GitHub Pages): a normal browser download works
+  // outside claude.ai (e.g. GitHub Pages): share sheet ("In Dateien sichern") where available, else normal download
   if (!window.claude){
+    try{
+      const file=new File([csv],exportFilename(),{type:"text/csv"});
+      if (navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:"Trainingstagebuch-Sicherung"}); exportDone(); return;
+      }
+    }catch(e){ if(e&&e.name==="AbortError"){ toast("Nicht gesichert – geht jederzeit über „Jetzt sichern“."); softRender(); return; } if(e&&e.name==="NotAllowedError"){ softRender(); toast("Tippe auf „Jetzt sichern“, um die CSV zu speichern."); return; } }
     try{
       const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
       const a=h("a",{href:url,download:exportFilename()}); document.body.append(a); a.click(); a.remove();
@@ -786,6 +800,7 @@ function vData(main){
 
 render();
 init();
+try{ if ("serviceWorker" in navigator && location.protocol==="https:" && !window.claude) navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
 </script>
 </body>
 </html>
