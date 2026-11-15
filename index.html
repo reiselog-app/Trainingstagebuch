@@ -312,7 +312,7 @@ function render(){
   $("#tabs").classList.toggle("hidden", inActive);
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.v===view?"page":"false"));
   if (bannerMsg && !inActive) main.append(h("div",{class:"banner"+(bannerWarn?" warn":""),role:"status",text:bannerMsg}));
-  const tt=$("#title"); new MutationObserver(()=>{}).disconnect();
+  const tt=$("#title");
   if (S.mode==="loading"){ $("#title").textContent="Trainingslog"; main.append(h("p",{class:"muted",text:"Daten werden geladen …"})); return; }
   queueMicrotask(()=>tt.classList.toggle("long",tt.textContent.length>14));
   ({home:vHome,choose:vChoose,active:vActive,activeEx:vActiveEx,summary:vSummary,history:vHistory,progress:vProgress,routines:vRoutines,data:vData})[view](main);
