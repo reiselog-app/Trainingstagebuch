@@ -58,7 +58,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* iOS zooms into any field with text smaller than 16px: keep every field at 16px or more */
 input,select,textarea{font-size:max(16px,1em)}
 h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:.01em;margin:0;text-wrap:balance}
-h1{font-size:clamp(22px,6.5vw,28px);line-height:1.1;overflow-wrap:anywhere}
+h1{font-size:clamp(22px,6.5vw,28px);line-height:1.1;overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
+h1.long{font-size:clamp(18px,5.2vw,24px)}
 h2{font-size:22px;line-height:1.15;font-weight:700}
 h3{font-size:19px;line-height:1.2}
 .num{font-variant-numeric:tabular-nums}
@@ -311,7 +312,9 @@ function render(){
   $("#tabs").classList.toggle("hidden", inActive);
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.v===view?"page":"false"));
   if (bannerMsg && !inActive) main.append(h("div",{class:"banner"+(bannerWarn?" warn":""),role:"status",text:bannerMsg}));
+  const tt=$("#title"); new MutationObserver(()=>{}).disconnect();
   if (S.mode==="loading"){ $("#title").textContent="Trainingslog"; main.append(h("p",{class:"muted",text:"Daten werden geladen …"})); return; }
+  queueMicrotask(()=>tt.classList.toggle("long",tt.textContent.length>14));
   ({home:vHome,choose:vChoose,active:vActive,activeEx:vActiveEx,summary:vSummary,history:vHistory,progress:vProgress,routines:vRoutines,data:vData})[view](main);
 }
 
@@ -401,7 +404,7 @@ function vActive(main){
   const list=h("div",{class:"exlist"});
   a.items.forEach((it,i)=>{ const n=loggedSets(it).length;
     list.append(h("button",{class:"exrow"+(n?" has":""),onclick:()=>{activeIdx=i;go("activeEx");}},
-      h("span",{class:"grow"},h("b",{text:it.ex}),h("span",{class:"muted small num",text:`${n} ${n===1?"Satz":"Sätze"}`})),h("span",{class:"chev",text:"›"})));
+      h("span",{class:"grow"},h("b",{text:it.ex}),h("span",{class:"muted small num",text:`${n} ${n===1?"Satz":"Sätze"}${it.replaces?` · statt ${it.replaces}`:""}`})),h("span",{class:"chev",text:"›"})));
   });
   list.append(h("button",{class:"exrow add",onclick:addExercise},h("span",{class:"grow",text:"+ Übung hinzufügen"})));
   main.append(list);
@@ -412,16 +415,28 @@ function vActive(main){
   main.append(h("button",{class:"btn danger",onclick:()=>modal({title:"Training verwerfen?",body:h("p",{text:"Alle Eingaben dieses Trainings gehen verloren."}),actions:[{label:"Abbrechen"},{label:"Verwerfen",kind:"danger",onClick:()=>{S.active=null;saveActiveNow();go("home");}}]})},"Training verwerfen"));
 }
 function addExercise(){
-  const known=knownExercises(); const a=S.active;
+  const a=S.active;
+  pickExercise("Übung hinzufügen",n=>{ a.items.push(newItem(n,knownExercises().get(n),"")); saveActiveSoon(); activeIdx=a.items.length-1; go("activeEx"); });
+}
+function swapExercise(idx){
+  const a=S.active, old=a.items[idx];
+  pickExercise(`${old.ex} tauschen`,n=>{
+    const it=newItem(n,knownExercises().get(n),"",old.sets.length);
+    it.replaces=old.replaces||old.ex;
+    a.items[idx]=it; saveActiveSoon(); activeIdx=idx; go("activeEx"); toast(`Nur für dieses Training: ${n} statt ${it.replaces}.`);
+  }, old.ex);
+}
+function pickExercise(title,onPick,exclude){
+  const known=knownExercises();
   let q="";
   const inp=h("input",{class:"in",id:"exSearch",placeholder:"Übungsname",autocomplete:"off",oninput:e=>{q=e.target.value;fill();}});
   const list=h("div",{class:"picklist",style:"max-height:50vh;overflow:auto"});
   let close;
-  const pick=n=>{ n=n.trim(); if(!n) return; a.items.push(newItem(n,known.get(n),"")); saveActiveSoon(); close(); activeIdx=a.items.length-1; go("activeEx"); };
-  const fill=()=>{ const names=[...known.keys()].sort((x,y)=>x.localeCompare(y,"de")).filter(n=>!q||n.toLowerCase().includes(q.toLowerCase()));
+  const pick=n=>{ n=n.trim(); if(!n) return; close(); onPick(n); };
+  const fill=()=>{ const names=[...known.keys()].sort((x,y)=>x.localeCompare(y,"de")).filter(n=>n!==exclude&&(!q||n.toLowerCase().includes(q.toLowerCase())));
     list.replaceChildren(...(q&&!known.has(q.trim())?[h("button",{class:"pick",onclick:()=>pick(q)},h("span",{class:"grow",text:`„${q.trim()}“ neu anlegen`}))]:[]),...names.map(n=>h("button",{class:"pick",onclick:()=>pick(n)},h("span",{class:"grow",text:n}),h("span",{class:"muted small",text:grp(known.get(n))})))); };
   fill();
-  close=modal({title:"Übung hinzufügen",body:h("div",{class:"stack"},inp,list),actions:[{label:"Abbrechen"}]});
+  close=modal({title,body:h("div",{class:"stack"},inp,list),actions:[{label:"Abbrechen"}]});
 }
 
 /* ---------- ACTIVE: einzelne Übung ---------- */
@@ -433,6 +448,7 @@ function vActiveEx(main){
   $("#title").textContent=it.ex;
   backBtn(()=>go("active"));
   $("#topRight").append(timerEl());
+  if (it.replaces) main.append(h("div",{class:"note",text:`Heute statt ${it.replaces}. Die Routine bleibt unverändert.`}));
   if (it.note) main.append(h("div",{class:"note",text:it.note}));
   const grid=h("div",{class:"sets2"});
   it.sets.forEach((s,si)=>{
@@ -455,6 +471,9 @@ function vActiveEx(main){
     h("button",{class:"btn grow addset",onclick:()=>{const p=it.sets[it.sets.length-1]||{};it.sets.push({r:null,w:null,sr:p.r??p.sr??null,sw:p.w??p.sw??null});saveActiveSoon();render(); const el=$(`#r-${it.sets.length-1}`); if(el) el.focus();}},"SATZ HINZUFÜGEN"),
     h("button",{class:"btn ghost",disabled:activeIdx>=a.items.length-1,"aria-label":"Nächste Übung",onclick:()=>{activeIdx++;render();window.scrollTo(0,0);}},"»")));
   main.append(h("p",{class:"muted small",text:"Graue Zahlen sind die Werte vom letzten Mal. Antippen übernimmt sie, dann kannst du sie ändern. Gewicht leer = Körpergewicht."}));
+  main.append(h("button",{class:"btn",style:"align-self:flex-start",onclick:()=>{
+    if (loggedSets(it).length) modal({title:"Übung tauschen?",body:h("p",{text:`Die ${loggedSets(it).length} erfassten Sätze von ${it.ex} werden dabei verworfen.`}),actions:[{label:"Abbrechen"},{label:"Tauschen",kind:"primary",onClick:()=>{ setTimeout(()=>swapExercise(activeIdx)); }}]});
+    else swapExercise(activeIdx); }},"⇄ Übung tauschen (nur heute)"));
   main.append(h("button",{class:"btn danger small",style:"align-self:flex-start",onclick:()=>modal({title:`${it.ex} entfernen?`,actions:[{label:"Abbrechen"},{label:"Entfernen",kind:"danger",onClick:()=>{a.items.splice(activeIdx,1);saveActiveSoon();go("active");}}]})},"Übung aus Training entfernen"));
 }
 
@@ -744,7 +763,7 @@ function backupCard(){
     h("span",{text:`Nicht gesicherte Änderungen. Letzte CSV-Sicherung: ${when}.`}),
     h("button",{class:"btn small",onclick:()=>exportCSV(false)},"Jetzt sichern")));
 }
-function exportFilename(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `trainingslog-${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}.csv`; }
+function exportFilename(){ return "trainingstagebuch-sicherung.csv"; }
 function exportDone(){ S.lastExport=Date.now(); S.dirty=false; lsSave(); softRender(); toast("CSV gesichert."); }
 async function exportCSV(auto){
   const csv=buildCSV();

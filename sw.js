@@ -1,6 +1,6 @@
 // Offline-Cache: App-Dateien werden gespeichert, damit die App im Studio auch ohne Netz startet.
 // Beim Öffnen mit Netz wird im Hintergrund die neueste Version geladen (gilt ab dem nächsten Start).
-const CACHE = "trainingstagebuch-v2";
+const CACHE = "trainingstagebuch-v3";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
