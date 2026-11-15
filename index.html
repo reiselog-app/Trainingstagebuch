@@ -215,6 +215,7 @@ button.card.wk{text-align:left;width:100%;font:inherit;color:inherit;cursor:poin
 
 <script>
 "use strict";
+const APP_VERSION="2026-11-15c";
 /* ---------- helpers ---------- */
 const $ = (s, r=document) => r.querySelector(s);
 function h(tag, attrs={}, ...kids){
@@ -811,7 +812,7 @@ function vData(main){
   main.append(h("div",{class:"card"},
     h("h2",{text:"Speicherort"}),
     h("p",{class:"muted",text:"Deine Daten liegen nur auf diesem Gerät. Nach jedem Training sicherst du automatisch eine CSV mit allen Trainings und Routinen. Speicher sie am besten in iCloud Drive oder der Dateien-App. Auf einem neuen Gerät importierst du einfach die neueste CSV."}),
-    h("div",{class:"muted small num",text:`${S.workouts.length} Trainings · ${S.routines.length} Routinen`})));
+    h("div",{class:"muted small num",text:`${S.workouts.length} Trainings · ${S.routines.length} Routinen · App-Version ${APP_VERSION}`})));
   const bc=backupCard(); if(bc) main.append(bc);
 
   const file=h("input",{type:"file",id:"csvFile",accept:".csv,text/csv",class:"hidden",onchange:async e=>{
@@ -848,7 +849,13 @@ function vData(main){
 
 render();
 init();
-try{ if ("serviceWorker" in navigator && location.protocol==="https:" && !window.claude) navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
+try{
+  if ("serviceWorker" in navigator && location.protocol==="https:" && !window.claude){
+    const hadCtrl=!!navigator.serviceWorker.controller; let reloaded=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(hadCtrl && !reloaded && view!=="active" && view!=="activeEx"){ reloaded=true; location.reload(); } });
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>{ r.update().catch(()=>{}); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") r.update().catch(()=>{}); }); }).catch(()=>{});
+  }
+}catch(e){}
 </script>
 </body>
 </html>
