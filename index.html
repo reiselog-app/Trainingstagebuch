@@ -255,7 +255,7 @@ function modal({title, body, actions}){
     h("div",{class:"actions"}, (actions||[]).map(a=>h("button",{class:"btn "+(a.kind||""),onclick:async()=>{ const r=a.onClick?await a.onClick():undefined; if(r!==false) close(); }},a.label))));
   bg.addEventListener("click",e=>{ if(e.target===bg) close(); });
   bg.append(box); document.body.append(bg);
-  const f=box.querySelector("input,textarea,button"); if(f) f.focus();
+  box.setAttribute("tabindex","-1"); const f=box.querySelector("[data-autofocus]"); (f||box).focus({preventScroll:true});
   return close;
 }
 
@@ -429,7 +429,7 @@ function swapExercise(idx){
 function pickExercise(title,onPick,exclude){
   const known=knownExercises();
   let q="";
-  const inp=h("input",{class:"in",id:"exSearch",placeholder:"Übungsname",autocomplete:"off",oninput:e=>{q=e.target.value;fill();}});
+  const inp=h("input",{class:"in",id:"exSearch",placeholder:"Suchen oder neue Übung eintippen",autocomplete:"off",oninput:e=>{q=e.target.value;fill();}});
   const list=h("div",{class:"picklist",style:"max-height:50vh;overflow:auto"});
   let close;
   const pick=n=>{ n=n.trim(); if(!n) return; close(); onPick(n); };
@@ -654,6 +654,19 @@ function vRoutines(main){
         ri<S.routines.length-1?h("button",{class:"btn small ghost","aria-label":"Nach unten",onclick:()=>{S.routines.splice(ri+1,0,S.routines.splice(ri,1)[0]);saveRoutines();render();}},"↓"):null)));
   });
 }
+function exField(e,i,known,gsel){
+  const NEW="__new__";
+  const names=[...known.keys()].sort((a,b)=>a.localeCompare(b,"de"));
+  const isKnown=e.ex&&known.has(e.ex);
+  const txt=h("input",{class:"in"+(isKnown||!e.ex&&!e._new?" hidden":""),id:`exnew-${i}`,placeholder:"Name der neuen Übung",value:isKnown?"":e.ex,oninput:ev=>{e.ex=ev.target.value;}});
+  const sel=h("select",{class:"in",id:`ex-${i}`,onchange:ev=>{
+      if (ev.target.value===NEW){ e._new=true; e.ex=""; txt.value=""; txt.classList.remove("hidden"); txt.focus(); }
+      else { e._new=false; e.ex=ev.target.value; txt.classList.add("hidden"); const g=known.get(e.ex); if(g){e.group=g;gsel.value=g;} } }},
+    h("option",{value:"",disabled:true,selected:!e.ex&&!e._new},"Übung wählen …"),
+    names.map(n=>h("option",{value:n,selected:n===e.ex},n)),
+    h("option",{value:NEW,selected:!!(e._new||(e.ex&&!isKnown))},"+ Neue Übung anlegen …"));
+  return h("label",{class:"f full"},"Übung",sel,txt);
+}
 function vEditor(main){
   const r=editing;
   $("#title").textContent=r._new?"Neue Routine":"Routine bearbeiten";
@@ -663,7 +676,7 @@ function vEditor(main){
   r.exercises.forEach((e,i)=>{
     const gsel=h("select",{class:"in",id:`g-${i}`,onchange:ev=>e.group=ev.target.value},Object.entries(GROUPS).map(([k,v])=>h("option",{value:k,selected:(e.group||"None")===k},v)));
     main.append(h("div",{class:"ed-ex"},
-      h("label",{class:"f full"},"Übung",h("input",{class:"in",id:`ex-${i}`,list:"exlist2",value:e.ex,oninput:ev=>{e.ex=ev.target.value; const g=known.get(e.ex.trim()); if(g){e.group=g;gsel.value=g;}}})),
+      exField(e,i,known,gsel),
       h("label",{class:"f"},"Muskelgruppe",gsel),
       h("label",{class:"f"},"Sätze",h("input",{class:"in",id:`s-${i}`,type:"text",inputmode:"numeric",value:e.sets??"",oninput:ev=>e.sets=parseNum(ev.target.value)})),
       h("label",{class:"f full"},"Hinweis (wird im Training angezeigt)",h("input",{class:"in",id:`n-${i}`,value:e.note||"",placeholder:"z. B. langsam: 3 Sek. runter, 2 Sek. halten",oninput:ev=>e.note=ev.target.value})),
@@ -672,10 +685,10 @@ function vEditor(main){
         i<r.exercises.length-1?h("button",{class:"btn small ghost","aria-label":"Nach unten",onclick:()=>{r.exercises.splice(i+1,0,r.exercises.splice(i,1)[0]);render();}},"↓"):null,
         h("button",{class:"btn small danger",onclick:()=>{r.exercises.splice(i,1);render();}},"Entfernen"))));
   });
-  main.append(h("button",{class:"btn",onclick:()=>{r.exercises.push({ex:"",group:"None",sets:3,note:""});render(); const el=$(`#ex-${r.exercises.length-1}`); if(el) el.focus();}},"+ Übung"));
+  main.append(h("button",{class:"btn",onclick:()=>{r.exercises.push({ex:"",group:"None",sets:3,note:""});render(); const el=$(`#ex-${r.exercises.length-1}`); if(el){ el.scrollIntoView({block:"center"}); }}},"+ Übung"));
   main.append(h("div",{class:"stack"},
     h("button",{class:"btn primary block",onclick:()=>{
-      r.name=r.name.trim(); r.exercises=r.exercises.map(e=>({...e,ex:e.ex.trim()})).filter(e=>e.ex);
+      r.name=r.name.trim(); r.exercises=r.exercises.map(({_new,...e})=>({...e,ex:e.ex.trim()})).filter(e=>e.ex);
       if(!r.name){ toast("Bitte einen Namen eingeben."); return; }
       if(S.routines.some(x=>x.name===r.name&&x.id!==r.id)){ toast("Diesen Namen gibt es schon."); return; }
       const {_new,...clean}=r; const i=S.routines.findIndex(x=>x.id===r.id);
