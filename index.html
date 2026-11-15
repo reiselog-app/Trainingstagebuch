@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2b5bd1">
+<meta name="theme-color" content="#e8431c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Training">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -17,34 +17,38 @@
 <style>
 /* Layout: one-column phone app, sticky header, bottom tab bar; cards for routines and exercises */
 :root{
-  --bg:#eef1f4;
+  /* Gym-Hero-Orange: kräftige Leiste oben, sonst helle, ruhige Flächen */
+  --bg:#f2f2f4;
   --card:#ffffff;
-  --ink:#16202a;
-  --muted:#5d6874;
-  --line:#d9dfe6;
-  --accent:#2b5bd1;
+  --ink:#1b1b1f;
+  --muted:#6b6b73;
+  --line:#e2e2e6;
+  --bar:#e8431c;
+  --bar-ink:#ffffff;
+  --accent:#c9360f;
   --accent-ink:#ffffff;
-  --accent-soft:#e3eafb;
+  --accent-soft:#fde9e2;
+  --field:#efeff2;
   --good:#1d7a4a;
   --good-soft:#dff2e7;
-  --danger:#b3261e;
+  --danger:#c9360f;
   --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --r:10px;
+  --r:12px;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0e1318;--card:#18202a;--ink:#e7ecf1;--muted:#97a3af;--line:#2a3542;
-    --accent:#7ea3ff;--accent-ink:#0b1424;--accent-soft:#1f2c47;
-    --good:#5fd394;--good-soft:#173527;--danger:#ff8a80;
+    --bg:#121214;--card:#1d1d21;--ink:#ececf0;--muted:#a0a0aa;--line:#2e2e34;
+    --bar:#c9370f;--bar-ink:#ffffff;--accent:#ff7a52;--accent-ink:#1a0a05;--accent-soft:#3a1e15;--field:#26262b;
+    --good:#5fd394;--good-soft:#173527;--danger:#ff8a70;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0e1318;--card:#18202a;--ink:#e7ecf1;--muted:#97a3af;--line:#2a3542;
-  --accent:#7ea3ff;--accent-ink:#0b1424;--accent-soft:#1f2c47;
-  --good:#5fd394;--good-soft:#173527;--danger:#ff8a80;
+  --bg:#121214;--card:#1d1d21;--ink:#ececf0;--muted:#a0a0aa;--line:#2e2e34;
+  --bar:#c9370f;--bar-ink:#ffffff;--accent:#ff7a52;--accent-ink:#1a0a05;--accent-soft:#3a1e15;--field:#26262b;
+  --good:#5fd394;--good-soft:#173527;--danger:#ff8a70;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -55,12 +59,17 @@ button,input,select,textarea{font:inherit;color:inherit}
 input,select,textarea{font-size:max(16px,1em)}
 h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:.01em;margin:0;text-wrap:balance}
 h1{font-size:clamp(22px,6.5vw,28px);line-height:1.1;overflow-wrap:anywhere}
-h2{font-size:22px;line-height:1.15}
+h2{font-size:22px;line-height:1.15;font-weight:700}
 h3{font-size:19px;line-height:1.2}
 .num{font-variant-numeric:tabular-nums}
 .app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
-header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
-header.top h1{flex:1}
+header.top{position:sticky;top:0;z-index:5;background:var(--bar);color:var(--bar-ink);padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:8px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+header.top h1{flex:1;text-transform:uppercase;font-weight:700;letter-spacing:.03em;text-align:center}
+header.top #topLeft,header.top #topRight{min-width:56px;display:flex;align-items:center}
+header.top #topRight{justify-content:flex-end}
+header.top .btn{color:var(--bar-ink);background:transparent;border-color:transparent}
+header.top .btn.primary{background:transparent;border-color:rgba(255,255,255,.7);font-weight:600}
+header.top .timer{color:var(--bar-ink)}
 main{flex:1;padding:16px 16px 96px;display:flex;flex-direction:column;gap:16px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs .inner{display:flex;max-width:640px;width:100%}
@@ -96,7 +105,7 @@ nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
 .stat b{display:block;font-family:var(--display);font-size:26px;font-weight:600;line-height:1.1}
 .stat span{font-size:12px;color:var(--muted)}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
-input.in,select.in,textarea.in{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:40px;width:100%;color:var(--ink)}
+input.in,select.in,textarea.in{border:1px solid var(--line);background:var(--field);border-radius:8px;padding:8px 10px;min-height:40px;width:100%;color:var(--ink)}
 textarea.in{min-height:64px;resize:vertical}
 /* active workout */
 .ex-card .head{display:flex;align-items:flex-start;gap:8px}
@@ -114,7 +123,7 @@ textarea.in{min-height:64px;resize:vertical}
 .done-row input{border-color:var(--good)}
 .timer{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
 /* history */
-.month{font-family:var(--display);font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.month{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:6px}
 .wk{cursor:pointer}
 .wk .meta{font-size:13px;color:var(--muted)}
 .wk-detail{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
@@ -160,27 +169,34 @@ table.t td{padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:to
 .exrow:last-child{border-bottom:0}
 .exrow .grow{display:flex;flex-direction:column}
 .exrow.has b{color:var(--accent)}
+.exrow b{font-weight:600}
 .exrow.add{color:var(--accent);font-weight:500}
 .chev{color:var(--muted);font-size:22px}
 .sets2{display:flex;flex-direction:column;gap:2px}
 .setrow{display:grid;grid-template-columns:64px 1fr 14px 1fr 22px 36px;align-items:center;gap:6px}
 .slabel{color:var(--muted);font-size:14px}
 .slabel.on{color:var(--ink);font-weight:600}
-.val{text-align:center;font-size:20px;font-family:var(--display);font-weight:600;min-height:46px;font-variant-numeric:tabular-nums}
+.val{text-align:center;font-size:22px;font-family:var(--display);font-weight:600;min-height:48px;font-variant-numeric:tabular-nums;background:var(--field);border-color:transparent}
 .val::placeholder{color:var(--muted);opacity:.55}
-.val.on{border-color:var(--accent);background:var(--accent-soft)}
+.val.on{color:var(--ink)}
+.val:focus{background:var(--bar);color:#fff;border-color:var(--bar);outline:none}
+.val:focus::placeholder{color:#fff;opacity:.7}
+.val::selection{background:rgba(255,255,255,.35);color:#fff}
 .x{color:var(--muted);text-align:center}
 .del{border:0;background:none;color:var(--danger);font-size:22px;cursor:pointer;min-height:40px}
 .lasttime{font-size:12px;color:var(--muted);text-align:right;padding:0 42px 8px 0;min-height:14px}
 .navbar{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px}
 .navbar .ghost{font-size:22px;color:var(--accent)}
-.addset{color:var(--accent);font-family:var(--display);font-size:18px;letter-spacing:.04em}
+.addset{color:var(--accent);background:transparent;border-color:transparent;font-weight:700;font-family:var(--display);font-size:18px;letter-spacing:.04em}
 button.card.wk{text-align:left;width:100%;font:inherit;color:inherit;cursor:pointer}
 .sumgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .sumgrid div{display:flex;flex-direction:column}
 .sumgrid span{font-size:12px;color:var(--muted)}
 .sumgrid b{font-family:var(--display);font-size:24px;font-weight:600;white-space:nowrap}
-.summary{border-color:var(--accent)}
+.summary{background:var(--bar);border-color:var(--bar);color:#fff}
+.summary .muted,.summary .sumgrid span{color:rgba(255,255,255,.85)}
+.summary .chip{background:rgba(255,255,255,.2);color:#fff}
+.summary .note{background:rgba(255,255,255,.18)}
 </style>
 </head>
 <body>
@@ -305,7 +321,7 @@ function vHome(main){
   { const bc=backupCard(); if(bc) main.append(bc); }
   if (S.active){
     const a=S.active; const n=a.items.reduce((k,i)=>k+loggedSets(i).length,0);
-    main.append(h("div",{class:"card",style:"border-color:var(--accent)"},
+    main.append(h("div",{class:"card",style:"border-color:var(--bar);border-width:2px"},
       h("div",{class:"row spread"},h("h2",{text:a.routine||"Training"}),h("span",{class:"chip",text:"läuft"})),
       h("div",{class:"muted small num",text:`Start ${fmtDay(a.startTs)}, ${fmtTime(a.startTs)} Uhr · ${n} Sätze erfasst`}),
       h("button",{class:"btn primary block",onclick:()=>go("active")},"Training fortsetzen")));
@@ -315,7 +331,7 @@ function vHome(main){
     main.append(h("div",{class:"stat-row"},
       h("div",{class:"stat"},h("b",{class:"num",text:String(S.workouts.length)}),h("span",{text:"Trainings gesamt"})),
       h("div",{class:"stat"},h("b",{class:"num",text:String(last30)}),h("span",{text:"in 30 Tagen"})),
-      h("div",{class:"stat"},h("b",{text:daysAgo(last.ts).replace("vor ","")}),h("span",{text:"seit dem letzten"}))));
+      h("div",{class:"stat"},h("b",{class:"num",text:String(Math.max(0,Math.floor((Date.now()-last.ts)/86400000)))}),h("span",{text:"Tage seit dem letzten"}))));
   }
   if (!S.active) main.append(h("button",{class:"btn primary block big",onclick:()=>{chooseName="";go("choose");}},"+ Training starten"));
   if (!S.workouts.length && !S.routines.length){
