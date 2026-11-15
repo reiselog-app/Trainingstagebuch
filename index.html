@@ -340,15 +340,15 @@ function vChoose(main){
   const sw=h("button",{class:"switch",role:"switch","aria-checked":autoFill?"true":"false","aria-label":"Übungen automatisch übernehmen",onclick:()=>{autoFill=!autoFill;sw.setAttribute("aria-checked",autoFill?"true":"false");}},h("span"));
   main.append(h("label",{class:"f"},"Workout-Name",inp),list,
     h("div",{class:"card"},h("div",{class:"row spread"},h("b",{text:"Übungen automatisch übernehmen"}),sw),
-      h("div",{class:"muted small",text:"Übernimmt alle Übungen vom letzten Training mit diesem Namen, mit den Werten von damals als Vorschlag."})),
+      h("div",{class:"muted small",text:"Übernimmt die Übungen der Routine mit diesem Namen, sonst die vom letzten Training. Die Werte vom letzten Mal stehen als Vorschlag drin."})),
     h("button",{class:"btn primary block big",onclick:()=>{ const n=chooseName.trim(); if(!n){toast("Bitte einen Namen wählen oder eingeben.");return;} startWorkout(n,autoFill); }},"Training beginnen"));
 }
 function startWorkout(name,fill){
   let exs=[];
   if (fill){
     const r=S.routines.find(x=>x.name===name); const lw=lastOfRoutine(name);
-    if (lw) exs=lw.items.map(i=>({ex:i.ex,group:i.group,note:(r&&(r.exercises.find(e=>e.ex===i.ex)||{}).note)||""}));
-    else if (r) exs=r.exercises.map(e=>({ex:e.ex,group:e.group,note:e.note||"",n:e.sets}));
+    if (r && r.exercises.length) exs=r.exercises.map(e=>({ex:e.ex,group:e.group,note:e.note||"",n:e.sets}));
+    else if (lw) exs=lw.items.map(i=>({ex:i.ex,group:i.group,note:""}));
   }
   S.active={routine:name,startTs:Date.now(),note:"",items:exs.map(e=>newItem(e.ex,e.group,e.note,e.n))};
   saveActiveNow(); go("active");
@@ -754,18 +754,22 @@ function vData(main){
     const f=e.target.files[0]; e.target.value=""; if(!f) return;
     let res; try{ res=importGymHero(await f.text()); }catch(err){ toast(err.message||"Datei konnte nicht gelesen werden."); return; }
     const wks=res.workouts;
-    if(!wks.length && !res.routines.length){ toast("Keine Trainings in der Datei gefunden."); return; }
+    if(!wks.length && !res.routines.length){ toast("Keine Trainings oder Routinen in der Datei gefunden."); return; }
     const existing=new Set(S.workouts.map(w=>w.id)); const fresh=wks.filter(w=>!existing.has(w.id));
-    const src=res.routines.length?res.routines:routinesFrom(wks);
+    const fromRows=res.routines.length>0;
+    const src=fromRows?res.routines:routinesFrom(wks);
     const newR=src.filter(r=>!S.routines.some(x=>x.name===r.name));
+    const updR=fromRows?src.filter(r=>S.routines.some(x=>x.name===r.name)):[];
     modal({title:"Import prüfen",body:h("div",{class:"stack"},
       h("p",{class:"num",text:`${wks.length} Trainings gefunden, davon ${fresh.length} neu (vorhandene werden übersprungen).`}),
-      h("p",{class:"muted num",text:newR.length?`${newR.length} Routinen kommen dazu: ${newR.map(r=>r.name).join(", ")}.`:"Alle Routinen gibt es schon."})),
+      h("p",{class:"muted num",text:newR.length?`${newR.length} Routinen kommen dazu: ${newR.map(r=>r.name).join(", ")}.`:(updR.length?"":"Alle Routinen gibt es schon.")}),
+      updR.length?h("p",{class:"muted num",text:`${updR.length} Routinen werden aktualisiert: ${updR.map(r=>r.name).join(", ")}.`}):null),
       actions:[{label:"Abbrechen"},{label:"Importieren",kind:"primary",onClick:()=>{
-        S.routines.push(...newR); S.workouts.push(...fresh); sortWk();
+        for (const u of updR){ const i=S.routines.findIndex(x=>x.name===u.name); S.routines[i]={...u,id:S.routines[i].id}; }
+        S.routines.push(...newR); S.workouts.push(...fresh); sortWk(); if(updR.length) S.dirty=true;
         // importing a backup is not a new change; keep the dirty flag as it was unless data already existed
         if (S.lastExport==null && !S.dirty) S.lastExport=Date.now(); else S.dirty=true;
-        lsSave(); render(); toast(`${fresh.length} Trainings importiert.`); }}]});
+        lsSave(); render(); toast(fresh.length?`${fresh.length} Trainings importiert.`:"Routinen importiert."); }}]});
   }});
   main.append(file);
   main.append(h("div",{class:"card"},
